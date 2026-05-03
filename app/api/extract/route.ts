@@ -5,7 +5,7 @@ import * as pdfParse from 'pdf-parse';
 export const maxDuration = 60;
 
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+    apiKey: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.trim() : 'dummy'
 });
 
 export async function POST(req: Request) {

@@ -5,6 +5,7 @@ export interface Quiz {
   title: string;
   questions: Question[];
   totalQuestions: number;
+  timeLimit?: number; // Time limit in minutes
   createdAt: Date;
 }
 
