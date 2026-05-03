@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getQuizzes, deleteQuiz } from '@/lib/store';
 import { Quiz } from '@/lib/store';
+import { QuizSession } from '@/app/api/sessions/route';
 
 export default function AdminDashboardPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [activeSessions, setActiveSessions] = useState<QuizSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -18,11 +20,30 @@ export default function AdminDashboardPage() {
     if (hasAuth) {
       setIsAuthenticated(true);
       loadQuizzes();
+      fetchSessions();
       setIsMounted(true);
     } else {
       window.location.href = '/admin/login';
     }
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const interval = setInterval(fetchSessions, 2000); // Poll every 2 seconds
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  const fetchSessions = async () => {
+    try {
+      const res = await fetch('/api/sessions');
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const data = await res.json();
+      setActiveSessions(data);
+    } catch (err) {
+      console.error("Failed to fetch sessions:", err);
+    }
+  };
 
   const loadQuizzes = async () => {
     setQuizzes(await getQuizzes());
@@ -89,6 +110,79 @@ export default function AdminDashboardPage() {
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <p className="text-gray-600 text-sm font-medium">Questions Available</p>
             <p className="text-4xl font-bold text-green-600 mt-2">30</p>
+          </div>
+        </div>
+
+        {/* Live Active Sessions Section */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Live Student Sessions</h2>
+          <div className="bg-white rounded-lg shadow-md overflow-hidden p-6 border border-gray-200">
+            {activeSessions.length === 0 ? (
+              <p className="text-gray-600 italic">No students currently taking quizzes.</p>
+            ) : (
+              <div className="space-y-6">
+                {activeSessions.map(session => {
+                  const sessionQuiz = quizzes.find(q => q.id === session.quizId);
+                  let correctCount = 0;
+
+                  if (sessionQuiz) {
+                    correctCount = Object.entries(session.answers).filter(([qIndex, options]) => {
+                      const q = sessionQuiz.questions[Number(qIndex)];
+                      if (!q) return false;
+                      const correctArr = [...q.correct].sort();
+                      const ansArr = [...options].sort();
+                      return ansArr.join(',') === correctArr.join(',');
+                    }).length;
+                  }
+
+                  const percentage = sessionQuiz ? Math.round((correctCount / sessionQuiz.totalQuestions) * 100) : 0;
+
+                  return (
+                    <div key={session.sessionId} className="border border-blue-100 rounded-lg p-4 bg-blue-50">
+                      <div className="flex justify-between items-center mb-4 border-b border-blue-200 pb-2">
+                        <h3 className="font-bold text-blue-900">{session.username} - {session.quizTitle}</h3>
+                        <div className="flex items-center gap-3">
+                          <span className="bg-white border border-gray-200 px-3 py-1 rounded-full text-sm font-bold text-gray-800 shadow-sm">
+                            Score: {correctCount}/{sessionQuiz?.totalQuestions || '?'} ({percentage}%)
+                          </span>
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${session.completed ? 'bg-green-500 text-white' : 'bg-yellow-400 text-yellow-900'}`}>
+                            {session.completed ? 'Completed' : 'In Progress (Live)'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-800">
+                        <h4 className="font-semibold mb-2">Real-Time Answers:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.keys(session.answers).length === 0 ? (
+                            <span className="text-gray-500">Waiting for responses...</span>
+                          ) : (
+                            Object.entries(session.answers).map(([qIndex, options]) => {
+                              let isCorrect = false;
+                              if (sessionQuiz) {
+                                const q = sessionQuiz.questions[Number(qIndex)];
+                                if (q) {
+                                  const correctArr = [...q.correct].sort();
+                                  const ansArr = [...options].sort();
+                                  isCorrect = ansArr.join(',') === correctArr.join(',');
+                                }
+                              }
+
+                              const bgColorClass = isCorrect ? 'bg-green-100 border-green-400 text-green-900' : 'bg-red-100 border-red-400 text-red-900';
+
+                              return (
+                                <div key={qIndex} className={`border px-3 py-1 rounded shadow-sm ${bgColorClass}`}>
+                                  <span className="font-medium">Q{Number(qIndex) + 1}:</span> {options.join(', ')}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
