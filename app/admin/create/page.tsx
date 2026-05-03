@@ -8,6 +8,8 @@ import { questionsBank, Question } from '@/lib/questions';
 
 export default function CreateQuizPage() {
   const [title, setTitle] = useState('');
+  const [timeLimit, setTimeLimit] = useState(60);
+  const [difficulty, setDifficulty] = useState('Intermediate');
   const [startRange, setStartRange] = useState(1);
   const [endRange, setEndRange] = useState(60);
   const [loading, setLoading] = useState(false);
@@ -55,7 +57,7 @@ export default function CreateQuizPage() {
       const res = await fetch('/api/twist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions: chosen60 })
+        body: JSON.stringify({ questions: chosen60, difficulty })
       });
 
       const data = await res.json();
@@ -89,6 +91,7 @@ export default function CreateQuizPage() {
       const newQuiz = {
         id: Date.now().toString(),
         title: title.trim(),
+        timeLimit: timeLimit,
         questions: selectedQuestions,
         totalQuestions: selectedQuestions.length,
         createdAt: new Date()
@@ -127,9 +130,38 @@ export default function CreateQuizPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., CCNA Twisted Exam 1"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 text-lg"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 text-lg mb-6"
               disabled={loading || isTwisting}
             />
+
+            <label htmlFor="timeLimit" className="block text-lg font-bold text-gray-900 mb-3">
+              Time Limit (Minutes)
+            </label>
+            <input
+              id="timeLimit"
+              type="number"
+              min="1"
+              value={timeLimit}
+              onChange={(e) => setTimeLimit(parseInt(e.target.value) || 60)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 text-lg mb-6"
+              disabled={loading || isTwisting}
+            />
+
+            <label htmlFor="difficulty" className="block text-lg font-bold text-gray-900 mb-3">
+              Twist Difficulty
+            </label>
+            <select
+              id="difficulty"
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 text-lg"
+              disabled={loading || isTwisting}
+            >
+              <option value="Normal">Normal</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="A little bit more intermediate">A little bit more intermediate</option>
+              <option value="Advanced">Advanced (Extremely rigorous)</option>
+            </select>
           </div>
 
           <div className="bg-white rounded-lg shadow-md p-8">
